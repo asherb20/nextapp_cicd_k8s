@@ -2,9 +2,9 @@
 
 ## Roadmap
 
-- [ ] Set Up a Simple Web App
-- [ ] Create Dockerfile
-- [ ] Push Image to AWS EC2
+- [x] Set Up a Simple Web App
+- [x] Create Dockerfile
+- [ ] Push Image to AWS ECR
 - [ ] Set Up Kubernetes Deployment
 - [ ] Automate CI/CD with GitHub Actions
 - [ ] Deploy to AWS EKS
