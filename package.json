@@ -1,5 +1,5 @@
 {
-  "name": "web_app_ci_cd_pipeline",
+  "name": "nextapp_cicd_k8s",
   "version": "0.1.0",
   "private": true,
   "scripts": {
