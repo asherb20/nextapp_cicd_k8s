@@ -1,0 +1,57 @@
+name: Deploy to Amazon EKS with Rollback
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy to EKS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Authenticate with AWS ECR
+        run: |
+          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | \
+          docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}
+
+      - name: Build and Push Docker Image
+        run: |
+          IMAGE_TAG=$(echo $GITHUB_SHA | cut -c1-7)
+          docker build -t ${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:$IMAGE_TAG .
+          docker push ${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:$IMAGE_TAG
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+
+      - name: Update kubeconfig for EKS
+        run: |
+          aws eks --region ${{ secrets.AWS_REGION }} update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }}
+
+      - name: Get Previous Image Tag (For Rollback)
+        id: get-prev-image
+        run: |
+          PREV_IMAGE=$(kubectl get deployment nextapp-cicd-k8s-deployment -o=jsonpath='{.spec.template.spec.containers[0].image}')
+          echo "PREV_IMAGE=$PREV_IMAGE" >> $GITHUB_ENV
+
+      - name: Deploy to Kubernetes
+        id: deploy
+        run: |
+          kubectl set image deployment/nextapp-cicd-k8s-deployment webapp=${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:$IMAGE_TAG
+          kubectl rollout status deployment/nextapp-cicd-k8s-deployment || exit 1
+
+      - name: Rollback on Failure
+        if: failure()
+        run: |
+          echo "Deployment failed! Rolling back to previous stable image..."
+          kubectl set image deployment/nextapp-cicd-k8s-deployment webapp=$PREV_IMAGE
+          kubectl rollout status deployment/nextapp-cicd-k8s-deployment

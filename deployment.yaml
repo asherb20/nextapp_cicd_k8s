@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nextapp-cicd-k8s-deployment
+  labels:
+    app: nextapp-cicd-k8s
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nextapp-cicd-k8s
+  template:
+    metadata:
+      labels:
+        app: nextapp-cicd-k8s
+    spec:
+      containers:
+        - name: nextapp-cicd-k8s
+          image: 432575282858.dkr.ecr.us-east-2.amazonaws.com/nextapp_cicd_k8s:latest
+          ports:
+            - containerPort: 3000
+          imagePullPolicy: Always
+      imagePullSecrets:
+        - name: ecr-secret
