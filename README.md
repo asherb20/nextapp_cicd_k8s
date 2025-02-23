@@ -4,7 +4,7 @@
 
 - [x] Set Up a Simple Web App
 - [x] Create Dockerfile
-- [ ] Push Image to AWS ECR
+- [x] Push Image to AWS ECR
 - [ ] Set Up Kubernetes Deployment
 - [ ] Automate CI/CD with GitHub Actions
 - [ ] Deploy to AWS EKS
