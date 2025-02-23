@@ -1,6 +1,6 @@
 # Tutorial Script
 
-## Create Next.js Project
+## Task 1Create Next.js Project
 
 ```bash
 npx create-next-app@latest

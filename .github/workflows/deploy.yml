@@ -36,7 +36,7 @@ jobs:
       - name: Update kubeconfig for EKS and create ECR secret
         run: |
           aws eks --region ${{ secrets.AWS_REGION }} update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }}
-          kubectl create secret docker-registry ecr-secret --docker-server=${{ secrets.ECR_REPOSITORY }} --docker-username=AWS --docker-password=$(aws ecr get-login-password --region ${{ secrets.AWS_REGION }})
+          kubectl create secret docker-registry ecr-secret --docker-server=${{ secrets.ECR_REGISTRY }} --docker-username=AWS --docker-password=$(aws ecr get-login-password --region ${{ secrets.AWS_REGION }})
 
       - name: Get Previous Image Tag (For Rollback)
         id: get-prev-image
