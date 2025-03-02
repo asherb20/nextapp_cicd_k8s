@@ -48,12 +48,12 @@ jobs:
       - name: Deploy to Kubernetes
         id: deploy
         run: |
-          kubectl set image deployment/nextapp-cicd-k8s-deployment webapp=${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:$IMAGE_TAG
+          kubectl set image deployment/nextapp-cicd-k8s-deployment nextapp-cicd-k8s=${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:$IMAGE_TAG
           kubectl rollout status deployment/nextapp-cicd-k8s-deployment || exit 1
 
       - name: Rollback on Failure
         if: failure()
         run: |
           echo "Deployment failed! Rolling back to previous stable image..."
-          kubectl set image deployment/nextapp-cicd-k8s-deployment webapp=$PREV_IMAGE
+          kubectl set image deployment/nextapp-cicd-k8s-deployment nextapp-cicd-k8s=$PREV_IMAGE
           kubectl rollout status deployment/nextapp-cicd-k8s-deployment
