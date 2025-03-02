@@ -303,13 +303,10 @@ spec:
 4. Create Image Pull Secret for AWS ECR
 
 ```bash
-kubectl create secret docker-registry ecr-secret \
-  --docker-server=<your-aws-account-id>.dkr.ecr.us-east-1.amazonaws.com \
-  --docker-username=AWS \
-  --docker-password=$(aws ecr get-login-password --region us-east-1)
+kubectl create secret docker-registry ecr-secret --docker-server=<your-aws-account-id>.dkr.ecr.<region>.amazonaws.com --docker-username=AWS --docker-password=$(aws ecr get-login-password --region <region>)
 ```
 
-5. Applyy the deployment
+5. Apply the deployment
 
 ```bash
 kubectl apply -f deployment.yaml
@@ -387,7 +384,7 @@ Add the following secrets:
 
 ---
 
-## Step 3: Create a GitHub Actions Workflow
+### Step 3: Create a GitHub Actions Workflow
 
 Inside your repository, create the GitHub Actions workflow file:
 
@@ -452,6 +449,28 @@ jobs:
           echo "Deployment failed! Rolling back to previous stable image..."
           kubectl set image deployment/<deployment-name> webapp=$PREV_IMAGE
           kubectl rollout status deployment/<deployment-name>
+```
+
+### (Optional) Step 4. Map GitHubActionsEKS IAM Identity to EKS Cluster
+
+**This step is only necessary if the IAM profile used to create the cluster is different than the GitHubActionsEKS profile.**
+
+- Check cluster IAM identity mapping:
+
+```bash
+eksctl get iamidentitymapping --cluster <cluster-name>
+```
+
+- Create IAM identity mapping:
+
+```bash
+eksctl create iamidentitymapping --cluster <cluster-name> --region <region> --arn arn:aws:iam::<aws-account-id>:user/<aws-iam-username> --group system:masters --no-duplicate-arns --username <aws-iam-username>
+```
+
+- Update the **kubeconfig** file:
+
+```bash
+aws eks update-kubeconfig --name <eks-cluster-name> --region <aws-region>
 ```
 
 ## Clean Up AWS Resources to Avoid Incurred Costs
