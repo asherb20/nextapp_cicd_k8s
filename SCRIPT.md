@@ -1,12 +1,16 @@
 # Tutorial Script
 
-## Task 1Create Next.js Project
+## Task 1. Create Next.js Project
+
+### Step 1. Create Next App
 
 ```bash
 npx create-next-app@latest
 ```
 
-## Create Dockerfile
+## Task 2. Create Dockerfile
+
+### Step 1. Create Dockerfile
 
 **`./Dockerfile`**
 
@@ -38,6 +42,8 @@ EXPOSE 3000
 CMD [ "npm", "start" ]
 ```
 
+### Step 2. Create dockerignore file
+
 **`./.dockerignore`**
 
 ```
@@ -46,16 +52,16 @@ node_modules
 .env
 ```
 
-Build and run locally:
+### Step 3. Build and Run Docker Locally
 
 ```bash
-docker build -t nextapp_cicd_k8s .
-docker run -p 3000:3000 nextapp_cicd_k8s
+docker build -t <image_name> .
+docker run -p 3000:3000 <image_name>
 ```
 
-## Create ECR Repository & Push Docker Image
+## Task 3. Create ECR Repository & Push Docker Image
 
-### Create AWS Policy with ECR
+### Step 1. Create AWS Policy with ECR
 
 - Allow authentication and repository creation
 - Push and pull container images
@@ -92,35 +98,35 @@ docker run -p 3000:3000 nextapp_cicd_k8s
 }
 ```
 
-### Push image to AWS ECR
+### Step 2. Push image to AWS ECR
 
 1. Authenticate Docker with AWS ECR
 
 ```bash
-aws ecr get-login-password --region <region> | docker login --username AWS --password-stdin <account-id>.dkr.ecr.<region>.amazonaws.com
+aws ecr get-login-password --region <aws-region> | docker login --username AWS --password-stdin <aws-account-id>.dkr.ecr.<aws-region>.amazonaws.com
 ```
 
 2. Create repository in AWS ECR (returns JSON with repo URL)
 
 ```bash
-aws ecr create-repository --repository-name <repo-name> --region <region>
+aws ecr create-repository --repository-name <repo-name> --region <aws-region>
 ```
 
 3. Tag Your Docker Image
 
 ```bash
-docker tag <repo-name>:latest <account-id>.dkr.ecr.<region>.amazonaws.com/<repo-name>:latest
+docker tag <repo-name>:latest <aws-account-id>.dkr.ecr.<aws-region>.amazonaws.com/<repo-name>:latest
 ```
 
 4. Push Docker Image to AWS ECR
 
 ```bash
-docker push <account-id>.dkr.ecr.<region>.amazonaws.com/<repo-name>:latest
+docker push <aws-account-id>.dkr.ecr.<aws-region>.amazonaws.com/<repo-name>:latest
 ```
 
-## Create EKS Cluster
+## Task 4. Create EKS Cluster
 
-### Installing eksctl Using Git Bash
+### Step 1. Install eksctl
 
 ```bash
 # for ARM systems, set ARCH to: `arm64`, `armv6` or `armv7`
@@ -137,60 +143,21 @@ unzip eksctl_$PLATFORM.zip -d $HOME/bin
 rm eksctl_$PLATFORM.zip
 ```
 
-### Create an EKS Cluster
+### Step 2. Create an EKS Cluster
 
 ```bash
-eksctl create cluster --name <cluster-name> --region <region> --nodegroup-name <nodegroup-name> --node-type t3.medium --nodes 2
+eksctl create cluster --name <cluster-name> --region <aws-region> --nodegroup-name <nodegroup-name> --node-type t3.medium --nodes 2
 ```
 
-### Create AWS IAM Policy for eksctl
+### Step 3. Configure AWS IAM Policies
+
+1. Navigate to **IAM** and then to **Policies**
+2. Create a new policy named `EksAllAccess` with the following JSON:
 
 ```json
 {
   "Version": "2012-10-17",
   "Statement": [
-    {
-      "Action": "ec2:*",
-      "Effect": "Allow",
-      "Resource": "*"
-    },
-    {
-      "Effect": "Allow",
-      "Action": "elasticloadbalancing:*",
-      "Resource": "*"
-    },
-    {
-      "Effect": "Allow",
-      "Action": "cloudwatch:*",
-      "Resource": "*"
-    },
-    {
-      "Effect": "Allow",
-      "Action": "autoscaling:*",
-      "Resource": "*"
-    },
-    {
-      "Effect": "Allow",
-      "Action": "iam:CreateServiceLinkedRole",
-      "Resource": "*",
-      "Condition": {
-        "StringEquals": {
-          "iam:AWSServiceName": [
-            "autoscaling.amazonaws.com",
-            "ec2scheduled.amazonaws.com",
-            "elasticloadbalancing.amazonaws.com",
-            "spot.amazonaws.com",
-            "spotfleet.amazonaws.com",
-            "transitgateway.amazonaws.com"
-          ]
-        }
-      }
-    },
-    {
-      "Effect": "Allow",
-      "Action": ["cloudformation:*"],
-      "Resource": "*"
-    },
     {
       "Effect": "Allow",
       "Action": "eks:*",
@@ -198,7 +165,7 @@ eksctl create cluster --name <cluster-name> --region <region> --nodegroup-name <
     },
     {
       "Action": ["ssm:GetParameter", "ssm:GetParameters"],
-      "Resource": ["arn:aws:ssm:*:432575282858:parameter/aws/*", "arn:aws:ssm:*::parameter/aws/*"],
+      "Resource": ["arn:aws:ssm:*:<account_id>:parameter/aws/*", "arn:aws:ssm:*::parameter/aws/*"],
       "Effect": "Allow"
     },
     {
@@ -210,7 +177,17 @@ eksctl create cluster --name <cluster-name> --region <region> --nodegroup-name <
       "Action": ["logs:PutRetentionPolicy"],
       "Resource": "*",
       "Effect": "Allow"
-    },
+    }
+  ]
+}
+```
+
+3. Create another policy named `IAMLimitedAccess` with the following JSON:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
     {
       "Effect": "Allow",
       "Action": [
@@ -243,18 +220,18 @@ eksctl create cluster --name <cluster-name> --region <region> --nodegroup-name <
         "iam:ListPolicyVersions"
       ],
       "Resource": [
-        "arn:aws:iam::432575282858:instance-profile/eksctl-*",
-        "arn:aws:iam::432575282858:role/eksctl-*",
-        "arn:aws:iam::432575282858:policy/eksctl-*",
-        "arn:aws:iam::432575282858:oidc-provider/*",
-        "arn:aws:iam::432575282858:role/aws-service-role/eks-nodegroup.amazonaws.com/AWSServiceRoleForAmazonEKSNodegroup",
-        "arn:aws:iam::432575282858:role/eksctl-managed-*"
+        "arn:aws:iam::<account_id>:instance-profile/eksctl-*",
+        "arn:aws:iam::<account_id>:role/eksctl-*",
+        "arn:aws:iam::<account_id>:policy/eksctl-*",
+        "arn:aws:iam::<account_id>:oidc-provider/*",
+        "arn:aws:iam::<account_id>:role/aws-service-role/eks-nodegroup.amazonaws.com/AWSServiceRoleForAmazonEKSNodegroup",
+        "arn:aws:iam::<account_id>:role/eksctl-managed-*"
       ]
     },
     {
       "Effect": "Allow",
       "Action": ["iam:GetRole", "iam:GetUser"],
-      "Resource": ["arn:aws:iam::432575282858:role/*", "arn:aws:iam::432575282858:user/*"]
+      "Resource": ["arn:aws:iam::<account_id>:role/*", "arn:aws:iam::<account_id>:user/*"]
     },
     {
       "Effect": "Allow",
@@ -270,17 +247,31 @@ eksctl create cluster --name <cluster-name> --region <region> --nodegroup-name <
 }
 ```
 
-### Configure kubectl for EKS
+4. Navigate to the AWS IAM role you are authenticated with locally
+5. Add the following AWS managed IAM policies plus the custom policies you just created:
+
+   - `AmazonEC2FullAccess`
+   - `AWSCloudFormationFullAccess`
+   - `EksAllAccess`
+   - `IAMLimitedAccess`
+
+### Task 5. Configure kubectl for EKS
+
+1. Update EKS cluster configuration
 
 ```bash
 aws eks --region <region> update-kubeconfig --name <cluster-name>
 ```
 
+2. Get cluster nodes
+
 ```bash
 kubectl get nodes
 ```
 
-### Create Kubernetes Deployment
+3. Create Kubernetes Deployment file
+
+**`./deployment.yaml`**
 
 ```yaml
 apiVersion: apps/v1
@@ -309,32 +300,27 @@ spec:
         - name: ecr-secret
 ```
 
-### Create Image Pull Secret for AWS ECR
+4. Create Image Pull Secret for AWS ECR
 
 ```bash
-kubectl create secret docker-registry ecr-secret \
-  --docker-server=<your-aws-account-id>.dkr.ecr.us-east-1.amazonaws.com \
-  --docker-username=AWS \
-  --docker-password=$(aws ecr get-login-password --region us-east-1)
+kubectl create secret docker-registry ecr-secret --docker-server=<your-aws-account-id>.dkr.ecr.<region>.amazonaws.com --docker-username=AWS --docker-password=$(aws ecr get-login-password --region <region>)
 ```
 
-### Deploy the Web App
-
-Apply the deployment:
+5. Apply the deployment
 
 ```bash
 kubectl apply -f deployment.yaml
 ```
 
-Verify the deployment:
+6. Verify the deployment
 
 ```bash
 kubectl get deployments
 ```
 
-### Expose the Application
+7. Create service file to expose the app
 
-Create Service to expose it:
+**`./service.yaml`**
 
 ```yaml
 apiVersion: v1
@@ -351,19 +337,19 @@ spec:
       targetPort: 80
 ```
 
-Apply the service:
+8. Apply the service
 
-```
+```bash
 kubectl apply -f service.yaml
 ```
 
-Get external IP address:
+9. Get external IP address
 
-```
+```bash
 kubectl get svc <app-name>-service
 ```
 
-Once the LoadBalancer is ready, the EXTERNAL-IP will show up, and you can access your app in the browser!
+10. Once the LoadBalancer is ready, the EXTERNAL-IP will show up, and you can access your app in the browser!
 
 ![alt text](./images/image.png)
 
@@ -398,7 +384,7 @@ Add the following secrets:
 
 ---
 
-## Step 3: Create a GitHub Actions Workflow
+### Step 3: Create a GitHub Actions Workflow
 
 Inside your repository, create the GitHub Actions workflow file:
 
@@ -463,6 +449,28 @@ jobs:
           echo "Deployment failed! Rolling back to previous stable image..."
           kubectl set image deployment/<deployment-name> webapp=$PREV_IMAGE
           kubectl rollout status deployment/<deployment-name>
+```
+
+### (Optional) Step 4. Map GitHubActionsEKS IAM Identity to EKS Cluster
+
+**This step is only necessary if the IAM profile used to create the cluster is different than the GitHubActionsEKS profile.**
+
+- Check cluster IAM identity mapping:
+
+```bash
+eksctl get iamidentitymapping --cluster <cluster-name>
+```
+
+- Create IAM identity mapping:
+
+```bash
+eksctl create iamidentitymapping --cluster <cluster-name> --region <region> --arn arn:aws:iam::<aws-account-id>:user/<aws-iam-username> --group system:masters --no-duplicate-arns --username <aws-iam-username>
+```
+
+- Update the **kubeconfig** file:
+
+```bash
+aws eks update-kubeconfig --name <eks-cluster-name> --region <aws-region>
 ```
 
 ## Clean Up AWS Resources to Avoid Incurred Costs
