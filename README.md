@@ -7,4 +7,4 @@
 - [x] Push Image to AWS ECR
 - [x] Set Up Kubernetes Deployment
 - [x] Deploy to AWS EKS
-- [ ] Automate CI/CD with GitHub Actions
+- [x] Automate CI/CD with GitHub Actions

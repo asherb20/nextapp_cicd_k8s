@@ -1,16 +1,18 @@
 # Tutorial Script
 
-## Task 1. Create Next.js Project
+### 1. Create Next.js Project
 
-### Step 1. Create Next App
+Create Next App
 
 ```bash
 npx create-next-app@latest
 ```
 
-## Task 2. Create Dockerfile
+---
 
-### Step 1. Create Dockerfile
+### 2. Create Dockerfile
+
+Create Dockerfile
 
 **`./Dockerfile`**
 
@@ -42,7 +44,7 @@ EXPOSE 3000
 CMD [ "npm", "start" ]
 ```
 
-### Step 2. Create dockerignore file
+Create dockerignore file
 
 **`./.dockerignore`**
 
@@ -52,16 +54,18 @@ node_modules
 .env
 ```
 
-### Step 3. Build and Run Docker Locally
+Build and Run Docker Locally
 
 ```bash
 docker build -t <image_name> .
 docker run -p 3000:3000 <image_name>
 ```
 
-## Task 3. Create ECR Repository & Push Docker Image
+---
 
-### Step 1. Create AWS Policy with ECR
+### 3. Create ECR Repository & Push Docker Image
+
+Create AWS Policy with ECR
 
 - Allow authentication and repository creation
 - Push and pull container images
@@ -98,35 +102,35 @@ docker run -p 3000:3000 <image_name>
 }
 ```
 
-### Step 2. Push image to AWS ECR
-
-1. Authenticate Docker with AWS ECR
+Authenticate Docker with AWS ECR
 
 ```bash
 aws ecr get-login-password --region <aws-region> | docker login --username AWS --password-stdin <aws-account-id>.dkr.ecr.<aws-region>.amazonaws.com
 ```
 
-2. Create repository in AWS ECR (returns JSON with repo URL)
+Create repository in AWS ECR (returns JSON with repo URL)
 
 ```bash
 aws ecr create-repository --repository-name <repo-name> --region <aws-region>
 ```
 
-3. Tag Your Docker Image
+Tag Your Docker Image
 
 ```bash
 docker tag <repo-name>:latest <aws-account-id>.dkr.ecr.<aws-region>.amazonaws.com/<repo-name>:latest
 ```
 
-4. Push Docker Image to AWS ECR
+Push Docker Image to AWS ECR
 
 ```bash
 docker push <aws-account-id>.dkr.ecr.<aws-region>.amazonaws.com/<repo-name>:latest
 ```
 
-## Task 4. Create EKS Cluster
+---
 
-### Step 1. Install eksctl
+### 4. Create EKS Cluster
+
+Install eksctl
 
 ```bash
 # for ARM systems, set ARCH to: `arm64`, `armv6` or `armv7`
@@ -143,13 +147,13 @@ unzip eksctl_$PLATFORM.zip -d $HOME/bin
 rm eksctl_$PLATFORM.zip
 ```
 
-### Step 2. Create an EKS Cluster
+Create an EKS Cluster
 
 ```bash
 eksctl create cluster --name <cluster-name> --region <aws-region> --nodegroup-name <nodegroup-name> --node-type t3.medium --nodes 2
 ```
 
-### Step 3. Configure AWS IAM Policies
+Configure AWS IAM Policies
 
 1. Navigate to **IAM** and then to **Policies**
 2. Create a new policy named `EksAllAccess` with the following JSON:
@@ -182,7 +186,7 @@ eksctl create cluster --name <cluster-name> --region <aws-region> --nodegroup-na
 }
 ```
 
-3. Create another policy named `IAMLimitedAccess` with the following JSON:
+Create another policy named `IAMLimitedAccess` with the following JSON:
 
 ```json
 {
@@ -247,29 +251,30 @@ eksctl create cluster --name <cluster-name> --region <aws-region> --nodegroup-na
 }
 ```
 
-4. Navigate to the AWS IAM role you are authenticated with locally
-5. Add the following AWS managed IAM policies plus the custom policies you just created:
+Navigate to the AWS IAM role you are authenticated with locally and add the following AWS managed IAM policies plus the custom policies you just created:
 
-   - `AmazonEC2FullAccess`
-   - `AWSCloudFormationFullAccess`
-   - `EksAllAccess`
-   - `IAMLimitedAccess`
+- `AmazonEC2FullAccess`
+- `AWSCloudFormationFullAccess`
+- `EksAllAccess`
+- `IAMLimitedAccess`
 
-### Task 5. Configure kubectl for EKS
+---
 
-1. Update EKS cluster configuration
+### 5. Configure kubectl for EKS
+
+Update EKS cluster configuration
 
 ```bash
 aws eks --region <region> update-kubeconfig --name <cluster-name>
 ```
 
-2. Get cluster nodes
+Get cluster nodes
 
 ```bash
 kubectl get nodes
 ```
 
-3. Create Kubernetes Deployment file
+Create Kubernetes Deployment file
 
 **`./deployment.yaml`**
 
@@ -300,25 +305,25 @@ spec:
         - name: ecr-secret
 ```
 
-4. Create Image Pull Secret for AWS ECR
+Create Image Pull Secret for AWS ECR
 
 ```bash
 kubectl create secret docker-registry ecr-secret --docker-server=<your-aws-account-id>.dkr.ecr.<region>.amazonaws.com --docker-username=AWS --docker-password=$(aws ecr get-login-password --region <region>)
 ```
 
-5. Apply the deployment
+Apply the deployment
 
 ```bash
 kubectl apply -f deployment.yaml
 ```
 
-6. Verify the deployment
+Verify the deployment
 
 ```bash
 kubectl get deployments
 ```
 
-7. Create service file to expose the app
+Create service file to expose the app
 
 **`./service.yaml`**
 
@@ -337,25 +342,27 @@ spec:
       targetPort: 80
 ```
 
-8. Apply the service
+Apply the service
 
 ```bash
 kubectl apply -f service.yaml
 ```
 
-9. Get external IP address
+Get external IP address
 
 ```bash
 kubectl get svc <app-name>-service
 ```
 
-10. Once the LoadBalancer is ready, the EXTERNAL-IP will show up, and you can access your app in the browser!
+Once the LoadBalancer is ready, the EXTERNAL-IP will show up, and you can access your app in the browser!
 
 ![alt text](./images/image.png)
 
-## Automate EKS Deployment with GitHub Actions
+---
 
-### Step 1: Create AWS IAM User & Attach Permissions
+### 6. Automate EKS Deployment with GitHub Actions
+
+Create AWS IAM User & Attach Permissions
 
 1. Go to **AWS IAM Console** → **Users** → **Create User**
 2. Name it **`GitHubActionsEKS`** or whatever you prefer
@@ -368,9 +375,7 @@ kubectl get svc <app-name>-service
    - `AmazonS3FullAccess` (Optional for storing artifacts)
 4. **Generate & save** the AWS Access Key and Secret Key.
 
----
-
-### Step 2: Store AWS Credentials in GitHub Secrets
+Store AWS Credentials in GitHub Secrets
 
 Go to your **GitHub Repository** → **Settings** → **Secrets and Variables** → **Actions** → **New Repository Secret**  
 Add the following secrets:
@@ -378,13 +383,9 @@ Add the following secrets:
 - `AWS_ACCESS_KEY_ID` → **Your IAM Access Key**
 - `AWS_SECRET_ACCESS_KEY` → **Your IAM Secret Key**
 - `AWS_REGION` → **e.g., us-east-1**
-- `ECR_REGISTRY` → **`<your-aws-account-id>.dkr.ecr.us-east-1.amazonaws.com`**
-- `ECR_REPOSITORY` → **Your ECR repository name (e.g., `webapp-repo`)**
-- `EKS_CLUSTER_NAME` → **Your EKS cluster name (e.g., `my-eks-cluster`)**
-
----
-
-### Step 3: Create a GitHub Actions Workflow
+- `ECR_REGISTRY` → **`<aws-account-id>.dkr.ecr.<aws-region>.amazonaws.com`**
+- `ECR_REPOSITORY` → **Your ECR repository name**
+- `EKS_CLUSTER_NAME` → **Your EKS cluster name**
 
 Inside your repository, create the GitHub Actions workflow file:
 
@@ -440,48 +441,50 @@ jobs:
       - name: Deploy to Kubernetes
         id: deploy
         run: |
-          kubectl set image deployment/<deployment-name> webapp=${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:$IMAGE_TAG
+          kubectl set image deployment/<deployment-name> <app-name>=${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:$IMAGE_TAG
           kubectl rollout status deployment/<deployment-name> || exit 1
 
       - name: Rollback on Failure
         if: failure()
         run: |
           echo "Deployment failed! Rolling back to previous stable image..."
-          kubectl set image deployment/<deployment-name> webapp=$PREV_IMAGE
+          kubectl set image deployment/<deployment-name> <app-name>=$PREV_IMAGE
           kubectl rollout status deployment/<deployment-name>
 ```
 
-### (Optional) Step 4. Map GitHubActionsEKS IAM Identity to EKS Cluster
+**(Optional) Map GitHubActionsEKS IAM Identity to EKS Cluster**
 
 **This step is only necessary if the IAM profile used to create the cluster is different than the GitHubActionsEKS profile.**
 
-- Check cluster IAM identity mapping:
+Check cluster IAM identity mapping:
 
 ```bash
 eksctl get iamidentitymapping --cluster <cluster-name>
 ```
 
-- Create IAM identity mapping:
+Create IAM identity mapping:
 
 ```bash
 eksctl create iamidentitymapping --cluster <cluster-name> --region <region> --arn arn:aws:iam::<aws-account-id>:user/<aws-iam-username> --group system:masters --no-duplicate-arns --username <aws-iam-username>
 ```
 
-- Update the **kubeconfig** file:
+Update the **kubeconfig** file:
 
 ```bash
 aws eks update-kubeconfig --name <eks-cluster-name> --region <aws-region>
 ```
 
-## Clean Up AWS Resources to Avoid Incurred Costs
+---
 
-1. Delete EKS Cluster
+### 7. Clean Up AWS Resources to Avoid Incurred Costs
+
+Delete EKS Cluster
 
 ```
 eksctl delete cluster --region=<region> --name=<cluster-name>
 ```
 
-2. Delete ECR Repository
+Delete ECR Repository
 
 ```
 aws ecr delete-repository --repository-name <repo-name> --region <region> --force
