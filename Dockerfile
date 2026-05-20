@@ -1,6 +1,6 @@
 # Build Stage
 ## Use Node.js 22 as the base image
-FROM node:22 AS builder
+FROM node:22.22.3-alpine3.22 AS builder
 ## Set working directory inside the container
 WORKDIR /app
 ## Copy package.json first for caching efficiency
@@ -14,7 +14,7 @@ RUN npm run build
 
 # Production Stage
 ## Use Node.js 22 as the base image
-FROM node:22
+FROM node:22.22.3-alpine3.22
 ## Set working directory inside the container
 WORKDIR /app
 ## Copy app directory from builder stage
