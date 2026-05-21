@@ -15,16 +15,16 @@ spec:
         app: nextapp
     spec:
       containers:
+        # local development only
+        # - name: nextapp
+        #   image: nextapp:latest
+        #   imagePullPolicy: IfNotPresent
+        #   ports:
+        #     - containerPort: 3000
         - name: nextapp
-          image: nextapp:latest
-          imagePullPolicy: IfNotPresent
+          image: <aws-account-id>.dkr.ecr.<aws-region>.amazonaws.com/<aws-ecr-repository-name>:latest
           ports:
             - containerPort: 3000
-      # containers:
-      #   - name: nextapp
-      #     image: <aws-account-id>.dkr.ecr.<aws-region>.amazonaws.com/<aws-ecr-repository-name>:latest
-      #     ports:
-      #       - containerPort: 3000
-      #     imagePullPolicy: Always
-      # imagePullSecrets:
-      #   - name: ecr-secret
+          imagePullPolicy: Always
+      imagePullSecrets:
+        - name: ecr-secret
