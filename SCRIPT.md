@@ -169,7 +169,10 @@ Configure AWS IAM Policies
     },
     {
       "Action": ["ssm:GetParameter", "ssm:GetParameters"],
-      "Resource": ["arn:aws:ssm:*:<account_id>:parameter/aws/*", "arn:aws:ssm:*::parameter/aws/*"],
+      "Resource": [
+        "arn:aws:ssm:*:<account_id>:parameter/aws/*",
+        "arn:aws:ssm:*::parameter/aws/*"
+      ],
       "Effect": "Allow"
     },
     {
@@ -235,7 +238,10 @@ Create another policy named `IAMLimitedAccess` with the following JSON:
     {
       "Effect": "Allow",
       "Action": ["iam:GetRole", "iam:GetUser"],
-      "Resource": ["arn:aws:iam::<account_id>:role/*", "arn:aws:iam::<account_id>:user/*"]
+      "Resource": [
+        "arn:aws:iam::<account_id>:role/*",
+        "arn:aws:iam::<account_id>:user/*"
+      ]
     },
     {
       "Effect": "Allow",
@@ -243,7 +249,11 @@ Create another policy named `IAMLimitedAccess` with the following JSON:
       "Resource": "*",
       "Condition": {
         "StringEquals": {
-          "iam:AWSServiceName": ["eks.amazonaws.com", "eks-nodegroup.amazonaws.com", "eks-fargate.amazonaws.com"]
+          "iam:AWSServiceName": [
+            "eks.amazonaws.com",
+            "eks-nodegroup.amazonaws.com",
+            "eks-fargate.amazonaws.com"
+          ]
         }
       }
     }
@@ -276,30 +286,30 @@ kubectl get nodes
 
 Create Kubernetes Deployment file
 
-**`./deployment.yaml`**
+**`k8s/deployment.yaml`**
 
 ```yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: <app-name>-deployment
+  name: nextapp-deployment
   labels:
-    app: <app-name>
+    app: nextapp
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: <app-name>
+      app: nextapp
   template:
     metadata:
       labels:
-        app: <app-name>
+        app: nextapp
     spec:
       containers:
-        - name: <app-name>
-          image: <aws-account-id>.dkr.ecr.<aws-region>.amazonaws.com/<app-name>-repo:latest
+        - name: nextapp
+          image: <aws-account-id>.dkr.ecr.<aws-region>.amazonaws.com/nextapp-repo:latest
           ports:
-            - containerPort: 80
+            - containerPort: 3000
           imagePullPolicy: Always
       imagePullSecrets:
         - name: ecr-secret
@@ -314,7 +324,7 @@ kubectl create secret docker-registry ecr-secret --docker-server=<your-aws-accou
 Apply the deployment
 
 ```bash
-kubectl apply -f deployment.yaml
+kubectl apply -f k8s/deployment.yaml
 ```
 
 Verify the deployment
@@ -325,33 +335,121 @@ kubectl get deployments
 
 Create service file to expose the app
 
-**`./service.yaml`**
+**`k8s/service.yaml`**
 
 ```yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: <app-name>-service
+  name: nextapp-service
 spec:
   type: LoadBalancer
   selector:
-    app: <app-name>
+    app: nextapp
   ports:
     - protocol: TCP
       port: 80
-      targetPort: 80
+      targetPort: 3000
 ```
 
 Apply the service
 
 ```bash
-kubectl apply -f service.yaml
+kubectl apply -f k8s/service.yaml
+```
+
+(Optional) Apply RBAC and Default-Deny Network Policy
+
+Create the RBAC file
+
+**`k8s/rbac.yaml`**
+
+```yaml
+# Create a ServiceAccount
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: app-reader
+  namespace: default
+---
+# Create a Role limiting to read-only pod access
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pod-reader
+  namespace: default
+rules:
+  - apiGroups: ['']
+    resources: ['pods', 'pods/logs']
+    verbs: ['get', 'list', 'watch']
+---
+# Bind the Role to the ServiceAccount
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: read-pods
+  namespace: default
+subjects:
+  - kind: ServiceAccount
+    name: app-reader
+    namespace: default
+roleRef:
+  kind: Role
+  apiGroup: rbac.authorization.k8s.io
+  name: pod-reader
+```
+
+Apply RBAC
+
+```bash
+kubectl apply -f k8s/rbac.yaml
+```
+
+Create the network policies file
+
+**`k8s/policies.yaml`**
+
+```yaml
+# Default deny all ingress and egress in namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: default
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+# Explicitly allow your app to receive traffic on port 3000 and 80
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-app-ingress
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      app: nextapp
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: 80
+```
+
+Apply the network policy
+
+```bash
+kubectl apply -f k8s/policies.yaml
 ```
 
 Get external IP address
 
 ```bash
-kubectl get svc <app-name>-service
+kubectl get svc nextapp-service
 ```
 
 Once the LoadBalancer is ready, the EXTERNAL-IP will show up, and you can access your app in the browser!
@@ -441,14 +539,14 @@ jobs:
       - name: Deploy to Kubernetes
         id: deploy
         run: |
-          kubectl set image deployment/<deployment-name> <app-name>=${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:$IMAGE_TAG
+          kubectl set image deployment/<deployment-name> nextapp=${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:$IMAGE_TAG
           kubectl rollout status deployment/<deployment-name> || exit 1
 
       - name: Rollback on Failure
         if: failure()
         run: |
           echo "Deployment failed! Rolling back to previous stable image..."
-          kubectl set image deployment/<deployment-name> <app-name>=$PREV_IMAGE
+          kubectl set image deployment/<deployment-name> nextapp=$PREV_IMAGE
           kubectl rollout status deployment/<deployment-name>
 ```
 

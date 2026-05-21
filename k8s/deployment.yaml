@@ -1,21 +1,27 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: <app-name>-deployment
+  name: nextapp-deployment
   labels:
-    app: <app-name>
+    app: nextapp
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: <app-name>
+      app: nextapp
   template:
     metadata:
       labels:
-        app: <app-name>
+        app: nextapp
     spec:
       containers:
-        - name: <app-name>
+        # local development only
+        # - name: nextapp
+        #   image: nextapp:latest
+        #   imagePullPolicy: IfNotPresent
+        #   ports:
+        #     - containerPort: 3000
+        - name: nextapp
           image: <aws-account-id>.dkr.ecr.<aws-region>.amazonaws.com/<aws-ecr-repository-name>:latest
           ports:
             - containerPort: 3000
