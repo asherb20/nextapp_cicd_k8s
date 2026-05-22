@@ -12,4 +12,4 @@
 - [x] Create Default-Deny Network Policy
 - [x] Harden Docker image
 - [x] Incorporate Snyk scanning
-- [x] Add Pre-Commit Hook
+- [ ] Add Pre-Commit Hook
